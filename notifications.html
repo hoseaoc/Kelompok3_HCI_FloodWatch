@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>FloodWatch – Notifikasi</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<header class="header" id="app-header"></header>
+
+<main>
+<div class="page-content space-y-6">
+
+  <div id="status-banner" style="display:none;"></div>
+
+  <div class="card">
+    <div class="flex items-center justify-between mb-4" style="flex-wrap:wrap;gap:1rem;">
+      <div class="flex items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="icon-6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <h1>Notifikasi</h1>
+      </div>
+      <button class="btn-primary" id="markAllBtn" onclick="markAllRead()" style="display:none;">Tandai Semua Dibaca</button>
+    </div>
+    <div class="flex gap-2">
+      <button class="filter-btn active" id="filterAll" onclick="setFilter('all')">Semua</button>
+      <button class="filter-btn" id="filterUnread" onclick="setFilter('unread')">Belum Dibaca (<span id="unreadCount">0</span>)</button>
+    </div>
+  </div>
+
+  <div class="space-y-4" id="notifList">
+    <div class="card" style="text-align:center;padding:3rem;">
+      <div class="text-muted">Memuat notifikasi dari model...</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="live-dot"></div>
+      <h3>Status Real-Time</h3>
+    </div>
+    <p class="text-muted">Notifikasi dihasilkan otomatis dari hasil prediksi model setiap 1 jam.</p>
+    <div class="box-accent mt-4">
+      <div class="text-sm">Status diperbaharui secara otomatis · Kelas: Aman, Siaga, Waspada, Bahaya</div>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<footer id="app-footer"></footer>
+<script src="app.js"></script>
+<script>
+buildLayout('notifications');
+
+// Notifikasi statis + notifikasi dari model
+let notifications = [
+  { id:'static-3', type:'warning', title:'Potensi Banjir',           message:'Curah hujan sedang-lebat diprediksi dalam 2 jam ke depan. Siapkan langkah mitigasi.', location:'DKI Jakarta', time:'25 menit lalu', read:true  },
+  { id:'static-4', type:'info',    title:'Laporan Warga Diterima',   message:'Terima kasih atas laporan Anda. Data sedang diverifikasi oleh sistem.',              location:'DKI Jakarta', time:'1 jam lalu',    read:true  },
+  { id:'static-5', type:'success', title:'Status Aman Sebelumnya',   message:'Kondisi cuaca membaik. Tingkat risiko banjir menurun ke kategori aman.',             location:'DKI Jakarta', time:'3 jam lalu',    read:true  },
+];
+
+let currentFilter = 'all';
+
+function notifIcon(type) {
+  const colors = { danger:'#dc2626', warning:'#ea580c', info:'#2563eb', success:'#16a34a' };
+  const c = colors[type]||'#6b7280';
+  if (type==='success') return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="${c}" stroke-width="2" style="width:1.25rem;height:1.25rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+  if (type==='info')    return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="${c}" stroke-width="2" style="width:1.25rem;height:1.25rem;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="${c}" stroke-width="2" style="width:1.25rem;height:1.25rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>`;
+}
+function notifClass(type){ return {danger:'notif-danger',warning:'notif-warning',info:'notif-info',success:'notif-success'}[type]||''; }
+
+function buildNotifFromModel(data) {
+  if (!data || data.status !== 'ok') return;
+  const pred = data.prediction;
+  const label = pred.flood_risk_label;
+  const rl    = labelToRiskLevel(label);
+  const typeMap = { danger:'danger', warning:'warning', caution:'info', safe:'success' };
+  const msgMap = {
+    danger:  `Model mendeteksi risiko BAHAYA. Curah hujan prediksi: ${pred.rainfall_next_hour.toFixed(2)} mm/jam. Segera evakuasi!`,
+    warning: `Model mendeteksi status WASPADA. Curah hujan prediksi: ${pred.rainfall_next_hour.toFixed(2)} mm/jam. Pantau terus.`,
+    caution: `Model mendeteksi status SIAGA. Curah hujan prediksi: ${pred.rainfall_next_hour.toFixed(2)} mm/jam. Bersiap-siap.`,
+    safe:    `Model menyatakan kondisi AMAN. Curah hujan prediksi: ${pred.rainfall_next_hour.toFixed(2)} mm/jam.`,
+  };
+  const titleMap = {
+    danger:'🚨 BAHAYA – Prediksi Banjir', warning:'⚠️ Waspada – Prediksi Banjir',
+    caution:'📋 Siaga – Prediksi Banjir', safe:'✅ Aman – Kondisi Terkini'
+  };
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} WIB`;
+
+  // Remove old model notif and prepend new one
+  notifications = notifications.filter(n => !n.id.startsWith('model-'));
+  notifications.unshift({
+    id: 'model-' + Date.now(),
+    type: typeMap[rl] || 'info',
+    title: titleMap[rl] || 'Prediksi Terkini',
+    message: msgMap[rl],
+    location: 'DKI Jakarta',
+    time: `Update: ${data.last_update}`,
+    read: false,
+    isModel: true,
+  });
+}
+
+function buildNotifList() {
+  const list = notifications.filter(n => currentFilter === 'all' || !n.read);
+  const unread = notifications.filter(n => !n.read).length;
+  document.getElementById('unreadCount').textContent = unread;
+  document.getElementById('markAllBtn').style.display = unread > 0 ? '' : 'none';
+  document.getElementById('filterAll').textContent = `Semua (${notifications.length})`;
+
+  const container = document.getElementById('notifList');
+  if (!list.length) {
+    container.innerHTML = `<div class="card" style="text-align:center;padding:3rem;"><div class="text-muted">Tidak ada notifikasi</div></div>`;
+    return;
+  }
+  container.innerHTML = list.map(n => `
+    <div class="notif-item ${notifClass(n.type)} ${n.read?'read':'unread'}" onclick="markRead('${n.id}')">
+      <div class="flex gap-4">
+        <div class="flex-shrink-0" style="margin-top:.25rem;">${notifIcon(n.type)}</div>
+        <div class="flex-1">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <h3>${n.title}</h3>
+                ${!n.read ? '<span class="unread-dot"></span>' : ''}
+                ${n.isModel ? '<span style="font-size:0.65rem;background:#e9ebef;padding:0.1rem 0.4rem;border-radius:4px;color:var(--muted-foreground);">ML Model</span>' : ''}
+              </div>
+              <p class="text-sm text-muted">${n.message}</p>
+            </div>
+          </div>
+          <div class="notif-meta">
+            <span>${ICONS.mapPin}${n.location}</span>
+            <span>${ICONS.clock}${n.time}</span>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function markRead(id){ const n=notifications.find(n=>n.id===id); if(n) n.read=true; buildNotifList(); }
+function markAllRead(){ notifications.forEach(n=>n.read=true); buildNotifList(); }
+function setFilter(f){
+  currentFilter=f;
+  document.getElementById('filterAll').classList.toggle('active',f==='all');
+  document.getElementById('filterUnread').classList.toggle('active',f==='unread');
+  buildNotifList();
+}
+
+(async () => {
+  const data = await fetchPrediction();
+  buildStatusBanner(data);
+  buildNotifFromModel(data);
+  buildNotifList();
+  if (data && data.next_update) startCountdown(data.next_update);
+  scheduleAutoRefresh(d => {
+    buildStatusBanner(d);
+    buildNotifFromModel(d);
+    buildNotifList();
+  });
+})();
+</script>
+</body>
+</html>

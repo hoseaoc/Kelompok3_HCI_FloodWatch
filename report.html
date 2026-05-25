@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>FloodWatch – Laporan Warga</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<header class="header" id="app-header"></header>
+
+<main>
+<div class="page-content space-y-6">
+
+  <div class="card">
+    <div class="flex items-start gap-4">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="icon-8 flex-shrink-0" style="color:var(--primary);margin-top:.125rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+      <div>
+        <h1 class="mb-2">Laporan Warga</h1>
+        <p class="text-muted">Bantu validasi prediksi sistem dengan melaporkan kondisi banjir aktual di lokasi Anda. Laporan Anda membantu memberikan informasi real-time kepada warga lainnya.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid-3">
+    <div class="box-blue" style="padding:1.25rem;">
+      <div class="flex items-center gap-3 mb-2">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="icon-5 text-blue"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+        <span style="color:#1e3a5f;">Total Laporan Hari Ini</span>
+      </div>
+      <div class="text-3xl text-blue">127</div>
+    </div>
+    <div class="box-green" style="padding:1.25rem;">
+      <div class="flex items-center gap-3 mb-2">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="icon-5 text-green"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        <span style="color:#14532d;">Laporan Terverifikasi</span>
+      </div>
+      <div class="text-3xl text-green">98</div>
+    </div>
+    <div class="box-purple" style="padding:1.25rem;">
+      <div class="flex items-center gap-3 mb-2">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="icon-5 text-purple"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span style="color:#581c87;">Lokasi Terpantau</span>
+      </div>
+      <div class="text-3xl text-purple">45</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Form -->
+    <div class="card">
+      <h2 class="mb-4">Laporkan Kondisi Banjir</h2>
+
+      <div id="reportSuccess" style="display:none;" class="success-state">
+        <div class="success-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <h3 class="text-green" style="margin-bottom:.5rem;">Laporan Berhasil Dikirim!</h3>
+        <p class="text-muted">Terima kasih telah membantu. Laporan Anda sedang diverifikasi oleh sistem.</p>
+      </div>
+
+      <div id="reportForm">
+        <div class="form-field">
+          <label for="loc">Lokasi</label>
+          <div class="input-wrap" style="position:relative;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="input-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <input type="text" id="loc" class="has-icon" placeholder="Cari kecamatan, misal: Kelapa Gading..." autocomplete="off" oninput="filterLokasi(this.value)" onfocus="filterLokasi(this.value)" onblur="setTimeout(()=>document.getElementById('loc-dropdown').style.display='none',150)"/>
+            <div id="loc-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,0.1);max-height:220px;overflow-y:auto;z-index:100;"></div>
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="waterLvl">Tinggi Genangan</label>
+          <select id="waterLvl">
+            <option value="">Pilih tinggi genangan</option>
+            <option value="low">Rendah (kurang dari 20cm)</option>
+            <option value="medium">Sedang (20cm - 50cm)</option>
+            <option value="high">Tinggi (lebih dari 50cm)</option>
+            <option value="very-high">Sangat Tinggi (lebih dari 1 meter)</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="desc">Deskripsi</label>
+          <textarea id="desc" rows="4" placeholder="Jelaskan kondisi banjir, dampak ke warga, dan informasi penting lainnya..."></textarea>
+        </div>
+        <div class="form-field" style="margin-bottom:1rem;">
+          <label>Foto Kondisi <span class="text-muted" style="font-weight:400;">(opsional)</span></label>
+          <label for="photo-upload" id="photo-drop-zone" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;padding:1.25rem;border:2px dashed var(--border);border-radius:var(--radius);cursor:pointer;background:var(--accent);transition:border-color .2s;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:1.75rem;height:1.75rem;color:var(--muted-foreground);"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span id="photo-label" class="text-sm text-muted">Klik untuk pilih foto atau ambil dari kamera</span>
+            <img id="photo-preview" src="" alt="preview" style="display:none;max-height:160px;border-radius:var(--radius);margin-top:0.5rem;object-fit:cover;"/>
+          </label>
+          <input type="file" id="photo-upload" accept="image/*" capture="environment" style="display:none;" onchange="handlePhotoUpload(event)"/>
+        </div>
+        <button class="btn-primary btn-full" onclick="submitReport()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="icon-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+          Kirim Laporan
+        </button>
+      </div>
+    </div>
+
+    <!-- Recent reports -->
+    <div class="card">
+      <div class="flex items-center justify-between mb-4" style="flex-wrap:wrap;gap:0.75rem;">
+        <h2>Laporan Terbaru</h2>
+        <span id="report-count" class="text-muted text-sm"></span>
+      </div>
+      <!-- Search -->
+      <div class="input-wrap mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="input-icon"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" class="has-icon" id="search-laporan" placeholder="Cari lokasi atau deskripsi..." oninput="renderLaporan()"/>
+      </div>
+      <div class="scroll-list space-y-4" id="laporan-list">
+        <div class="text-muted text-sm" style="text-align:center;padding:2rem;">Memuat laporan...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info box -->
+  <div class="box-blue" style="padding:1.5rem;">
+    <div class="flex items-start gap-4">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="icon-6 flex-shrink-0 text-blue"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>
+        <h3 style="color:#1e3a5f;" class="mb-2">Mengapa Laporan Anda Penting?</h3>
+        <p style="color:#1d4ed8;" class="text-sm">Laporan dari warga membantu sistem memvalidasi prediksi dan memberikan informasi real-time kepada masyarakat lainnya. Data crowdsourced ini meningkatkan akurasi peringatan dini hingga 40% dan membantu tim respons darurat mengidentifikasi area prioritas evakuasi.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<footer id="app-footer"></footer>
+<script src="app.js"></script>
+<script>
+buildLayout('report');
+
+function submitReport() {
+  const loc  = document.getElementById('loc').value.trim();
+  const wl   = document.getElementById('waterLvl').value;
+  const desc = document.getElementById('desc').value.trim();
+  if (!loc||!wl||!desc){ alert('Mohon isi semua field terlebih dahulu.'); return; }
+
+  // Tambah laporan baru ke list
+  laporanList.unshift({
+    id: Date.now(),
+    lokasi: loc,
+    wl: wl,
+    desc: desc,
+    oleh: 'Anda',
+    time: 'Baru saja',
+    verified: false,
+    isNew: true,
+  });
+  renderLaporan();
+
+  document.getElementById('reportForm').style.display='none';
+  document.getElementById('reportSuccess').style.display='block';
+  setTimeout(()=>{
+    document.getElementById('loc').value='';
+    document.getElementById('waterLvl').value='';
+    document.getElementById('desc').value='';
+    document.getElementById('photo-upload').value='';
+    document.getElementById('photo-preview').style.display='none';
+    document.getElementById('photo-label').textContent='Klik untuk pilih foto atau ambil dari kamera';
+    document.getElementById('reportForm').style.display='block';
+    document.getElementById('reportSuccess').style.display='none';
+  },3000);
+}
+
+const PIN_ICON = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:1rem;height:1rem;color:var(--muted-foreground);flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`;
+const WL_LABEL = { low:'Rendah (<20cm)', medium:'Sedang (20-50cm)', high:'Tinggi (>50cm)', 'very-high':'Sangat Tinggi (>1m)' };
+
+let laporanList = [
+  { id:1, lokasi:'Jakarta Utara - Kelapa Gading', wl:'high',   desc:'Jalan raya mulai tergenang, air setinggi 60cm. Kendaraan kecil tidak bisa lewat.', oleh:'Ahmad S.',  time:'3 menit lalu',  verified:true  },
+  { id:2, lokasi:'Jakarta Barat - Cengkareng',    wl:'medium', desc:'Genangan di depan kompleks perumahan, tinggi air sekitar 30cm.',                   oleh:'Maria L.',  time:'8 menit lalu',  verified:true  },
+  { id:3, lokasi:'Jakarta Selatan - Tebet',       wl:'low',    desc:'Hujan deras, mulai ada genangan kecil di beberapa titik.',                          oleh:'Budi W.',   time:'15 menit lalu', verified:false },
+];
+
+function renderLaporan() {
+  const q = (document.getElementById('search-laporan').value || '').toLowerCase().trim();
+  const hasil = q
+    ? laporanList.filter(l => l.lokasi.toLowerCase().includes(q) || l.desc.toLowerCase().includes(q))
+    : laporanList;
+
+  document.getElementById('report-count').textContent = `${hasil.length} laporan`;
+
+  if (!hasil.length) {
+    document.getElementById('laporan-list').innerHTML = `<div class="text-muted text-sm" style="text-align:center;padding:2rem;">Tidak ada laporan yang cocok.</div>`;
+    return;
+  }
+
+  document.getElementById('laporan-list').innerHTML = hasil.map(l => `
+    <div class="report-item${l.isNew ? ' box-accent' : ''}">
+      <div class="report-header">
+        <div class="report-location">${PIN_ICON} ${l.lokasi}</div>
+        ${l.verified ? '<span class="verified-badge">Terverifikasi</span>' : l.isNew ? '<span style="font-size:0.7rem;color:#2563eb;font-weight:500;">Baru</span>' : ''}
+      </div>
+      <div class="report-body space-y-2">
+        <div class="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#ea580c" stroke-width="2" style="width:1rem;height:1rem;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span class="text-sm">${WL_LABEL[l.wl] || l.wl}</span>
+        </div>
+        <p class="text-sm text-muted">${l.desc}</p>
+        <div class="report-footer"><span>Dilaporkan oleh ${l.oleh}</span><span>${l.time}</span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+renderLaporan();
+
+function handlePhotoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const preview = document.getElementById('photo-preview');
+  const label   = document.getElementById('photo-label');
+  const reader  = new FileReader();
+  reader.onload = e => {
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    label.textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+const LOKASI_DKI = [
+  // Jakarta Utara
+  'Jakarta Utara - Kelapa Gading','Jakarta Utara - Penjaringan','Jakarta Utara - Pademangan',
+  'Jakarta Utara - Tanjung Priok','Jakarta Utara - Koja','Jakarta Utara - Cilincing',
+  // Jakarta Barat
+  'Jakarta Barat - Cengkareng','Jakarta Barat - Grogol Petamburan','Jakarta Barat - Taman Sari',
+  'Jakarta Barat - Tambora','Jakarta Barat - Kebon Jeruk','Jakarta Barat - Palmerah',
+  'Jakarta Barat - Kalideres','Jakarta Barat - Kembangan',
+  // Jakarta Selatan
+  'Jakarta Selatan - Kebayoran Baru','Jakarta Selatan - Kebayoran Lama','Jakarta Selatan - Pesanggrahan',
+  'Jakarta Selatan - Cilandak','Jakarta Selatan - Pasar Minggu','Jakarta Selatan - Jagakarsa',
+  'Jakarta Selatan - Mampang Prapatan','Jakarta Selatan - Pancoran','Jakarta Selatan - Tebet',
+  'Jakarta Selatan - Setiabudi',
+  // Jakarta Timur
+  'Jakarta Timur - Matraman','Jakarta Timur - Pulogadung','Jakarta Timur - Jatinegara',
+  'Jakarta Timur - Duren Sawit','Jakarta Timur - Kramat Jati','Jakarta Timur - Pasar Rebo',
+  'Jakarta Timur - Ciracas','Jakarta Timur - Cipayung','Jakarta Timur - Makasar',
+  'Jakarta Timur - Cakung',
+  // Jakarta Pusat
+  'Jakarta Pusat - Gambir','Jakarta Pusat - Sawah Besar','Jakarta Pusat - Kemayoran',
+  'Jakarta Pusat - Senen','Jakarta Pusat - Cempaka Putih','Jakarta Pusat - Menteng',
+  'Jakarta Pusat - Tanah Abang','Jakarta Pusat - Johar Baru',
+];
+
+function filterLokasi(val) {
+  const dd = document.getElementById('loc-dropdown');
+  const q  = val.trim().toLowerCase();
+  const hasil = q.length === 0
+    ? LOKASI_DKI
+    : LOKASI_DKI.filter(l => l.toLowerCase().includes(q));
+
+  if (!hasil.length) { dd.style.display = 'none'; return; }
+  dd.style.display = 'block';
+  dd.innerHTML = hasil.map(l => `
+    <div onclick="pilihLokasi('${l}')" style="padding:0.6rem 0.85rem;cursor:pointer;font-size:0.875rem;border-bottom:1px solid var(--border);"
+      onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background=''">${l}</div>
+  `).join('');
+}
+
+function pilihLokasi(val) {
+  document.getElementById('loc').value = val;
+  document.getElementById('loc-dropdown').style.display = 'none';
+}
+</script>
+</body>
+</html>

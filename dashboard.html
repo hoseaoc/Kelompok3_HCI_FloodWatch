@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>FloodWatch – Dashboard</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    .model-badge {
+      display:inline-flex;align-items:center;gap:0.4rem;
+      padding:0.2rem 0.6rem;background:#f3f3f5;border:1px solid var(--border);
+      border-radius:9999px;font-size:0.7rem;color:var(--muted-foreground);
+    }
+    .proba-bar-wrap { margin-top:0.75rem; }
+    .proba-row { display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;font-size:0.8rem; }
+    .proba-label { width:4rem;flex-shrink:0; }
+    .proba-track { flex:1;height:8px;background:#e9ebef;border-radius:4px;overflow:hidden; }
+    .proba-fill { height:100%;border-radius:4px;transition:width 0.6s; }
+    .proba-val { width:3rem;text-align:right;color:var(--muted-foreground); }
+    .stat-row { display:flex;gap:1rem;flex-wrap:wrap; }
+    .stat-item { flex:1;min-width:80px;padding:0.75rem;background:var(--accent);border-radius:var(--radius);text-align:center; }
+    .stat-item .val { font-size:1.25rem;font-weight:500; }
+    .stat-item .lbl { font-size:0.7rem;color:var(--muted-foreground);margin-top:0.1rem; }
+    .section-tag { font-size:0.7rem;color:var(--muted-foreground);margin-bottom:0.5rem;display:flex;align-items:center;gap:0.4rem; }
+    .refresh-btn {
+      display:inline-flex;align-items:center;gap:0.4rem;
+      padding:0.35rem 0.75rem;background:var(--accent);border:1px solid var(--border);
+      border-radius:var(--radius);font-size:0.8rem;cursor:pointer;transition:opacity .15s;
+    }
+    .refresh-btn:hover{opacity:0.7;}
+    .refresh-btn svg{width:0.9rem;height:0.9rem;}
+    .spinning { animation: spin 1s linear infinite; }
+    @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    .skeleton { background: linear-gradient(90deg,#e9ebef 25%,#f3f3f5 50%,#e9ebef 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:4px; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .table-forecast { width:100%;border-collapse:collapse;font-size:0.8rem; }
+    .table-forecast th { padding:0.5rem;text-align:left;border-bottom:1px solid var(--border);color:var(--muted-foreground);font-weight:500; }
+    .table-forecast td { padding:0.5rem;border-bottom:1px solid var(--border); }
+    .table-forecast tr:last-child td { border-bottom:none; }
+    .table-forecast tbody tr:hover { background:var(--accent); }
+  </style>
+</head>
+<body>
+<header class="header" id="app-header"></header>
+
+<main>
+<div class="page-content space-y-6">
+
+  <!-- Status banner -->
+  <div id="status-banner" style="display:none;"></div>
+
+  <!-- ===== HEADER CARD ===== -->
+  <div class="card">
+    <div class="flex items-start justify-between mb-4" style="flex-wrap:wrap;gap:1rem;">
+      <div>
+        <h1 class="mb-2">Dashboard Prediksi Banjir</h1>
+        <p class="text-muted">Pembaruan otomatis setiap 1 jam · Data cuaca real-time</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 text-muted">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:1.1rem;height:1.1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span id="loc-name" class="text-sm">DKI Jakarta</span>
+        </div>
+        <button class="refresh-btn" onclick="doManualRefresh()" title="Refresh sekarang">
+          <svg id="refresh-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== RISK CARDS ===== -->
+    <div class="grid-4" id="risk-cards">
+      <!-- filled by JS -->
+      <div class="box-red skeleton" style="height:6rem;"></div>
+      <div class="box-orange skeleton" style="height:6rem;"></div>
+      <div class="box-yellow skeleton" style="height:6rem;"></div>
+      <div class="box-green skeleton" style="height:6rem;"></div>
+    </div>
+  </div>
+
+  <!-- ===== MODEL PREDICTION CARDS ===== -->
+  <div class="grid-2">
+
+    <!-- Regression result -->
+    <div class="card">
+      <div class="section-tag">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:0.9rem;height:0.9rem;"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>
+        Prediksi 1 Jam ke Depan
+      </div>
+      <h2 class="mb-4">Prediksi Curah Hujan</h2>
+
+      <!-- Big prediction number -->
+      <div style="display:flex;align-items:flex-end;gap:0.75rem;margin-bottom:1rem;">
+        <div id="pred-rain-val" style="font-size:3rem;font-weight:600;line-height:1;" class="text-blue">—</div>
+        <div style="padding-bottom:0.4rem;">
+          <div style="font-size:0.875rem;color:var(--muted-foreground);">mm/jam</div>
+          <div id="pred-rain-label" class="text-sm">—</div>
+        </div>
+      </div>
+
+      <!-- Current conditions -->
+      <div class="stat-row mb-4">
+        <div class="stat-item">
+          <div class="val" id="cur-precip">—</div>
+          <div class="lbl">Curah Hujan Saat Ini (mm)</div>
+        </div>
+        <div class="stat-item">
+          <div class="val" id="cur-temp">—</div>
+          <div class="lbl">Suhu (°C)</div>
+        </div>
+        <div class="stat-item">
+          <div class="val" id="cur-hum">—</div>
+          <div class="lbl">Kelembaban (%)</div>
+        </div>
+        <div class="stat-item">
+          <div class="val" id="cur-cloud">—</div>
+          <div class="lbl">Tutupan Awan (%)</div>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="section-tag">Grafik curah hujan 24 jam terakhir & prediksi ke depan</div>
+      <div class="chart-wrap"><canvas id="rainfallChart"></canvas></div>
+    </div>
+
+    <!-- Classification result -->
+    <div class="card">
+      <div class="section-tag">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:0.9rem;height:0.9rem;"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>
+        Analisis Risiko Saat Ini
+      </div>
+      <h2 class="mb-4">Status Risiko Banjir</h2>
+
+      <!-- Big risk badge -->
+      <div style="text-align:center;padding:1.5rem 0;margin-bottom:1rem;">
+        <div id="risk-badge-big" style="display:inline-block;padding:0.75rem 2.5rem;border-radius:9999px;font-size:1.75rem;font-weight:600;color:white;background:#22c55e;margin-bottom:0.75rem;">
+          AMAN
+        </div>
+        <div id="risk-desc" class="text-muted text-sm">Memuat data...</div>
+      </div>
+
+      <!-- Probability bars -->
+      <div class="section-tag">Tingkat kemungkinan per status</div>
+      <div class="proba-bar-wrap" id="proba-bars">
+        <div class="proba-row"><span class="proba-label">Aman</span><div class="proba-track"><div class="proba-fill" style="width:0%;background:#22c55e;"></div></div><span class="proba-val">—</span></div>
+        <div class="proba-row"><span class="proba-label">Siaga</span><div class="proba-track"><div class="proba-fill" style="width:0%;background:#eab308;"></div></div><span class="proba-val">—</span></div>
+        <div class="proba-row"><span class="proba-label">Waspada</span><div class="proba-track"><div class="proba-fill" style="width:0%;background:#f97316;"></div></div><span class="proba-val">—</span></div>
+        <div class="proba-row"><span class="proba-label">Bahaya</span><div class="proba-track"><div class="proba-fill" style="width:0%;background:#ef4444;"></div></div><span class="proba-val">—</span></div>
+      </div>
+
+      <!-- Alert box (only for danger) -->
+      <div id="danger-alert" style="display:none;margin-top:1rem;" class="box-red">
+        <div class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#dc2626" stroke-width="2" style="width:1.25rem;height:1.25rem;flex-shrink:0;margin-top:0.1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          <div>
+            <div style="color:#7f1d1d;font-weight:500;">Peringatan Tingkat Bahaya</div>
+            <div class="text-sm" style="color:#b91c1c;margin-top:0.25rem;">Curah hujan sangat tinggi terdeteksi. Potensi banjir besar. Segera lakukan evakuasi jika air mulai naik.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HOURLY FORECAST TABLE ===== -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <h2>Riwayat & Prediksi Per Jam (24 Jam)</h2>
+      <span class="model-badge">Prakiraan Otomatis per Jam</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="table-forecast">
+        <thead>
+          <tr>
+            <th>Waktu</th>
+            <th>Hujan Saat Ini (mm)</th>
+            <th>Prediksi Hujan (mm)</th>
+            <th>Suhu</th>
+            <th>Kelembaban</th>
+            <th>Status Risiko</th>
+          </tr>
+        </thead>
+        <tbody id="forecast-tbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted-foreground);padding:2rem;">Memuat data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<footer id="app-footer"></footer>
+<script src="app.js"></script>
+<script>
+buildLayout('dashboard');
+
+let rainfallChart = null;
+
+// ===== RENDER FUNCTIONS =====
+function renderRiskCards(data) {
+  if (!data || data.status !== 'ok') {
+    document.getElementById('risk-cards').innerHTML = `
+      <div class="box-red"><div class="flex items-center gap-2 mb-2"><div class="dot dot-red"></div><span style="color:#7f1d1d;">Bahaya</span></div><div class="text-3xl text-red">—</div><div class="text-red">wilayah</div></div>
+      <div class="box-orange"><div class="flex items-center gap-2 mb-2"><div class="dot dot-orange"></div><span style="color:#7c2d12;">Waspada</span></div><div class="text-3xl text-orange">—</div><div class="text-orange">wilayah</div></div>
+      <div class="box-yellow"><div class="flex items-center gap-2 mb-2"><div class="dot dot-yellow"></div><span style="color:#713f12;">Siaga</span></div><div class="text-3xl text-yellow">—</div><div class="text-yellow">wilayah</div></div>
+      <div class="box-green"><div class="flex items-center gap-2 mb-2"><div class="dot dot-green"></div><span style="color:#14532d;">Aman</span></div><div class="text-3xl text-green">—</div><div class="text-green">wilayah</div></div>`;
+    return;
+  }
+  // Count from hourly forecast
+  const counts = { Bahaya:0, Waspada:0, Siaga:0, Aman:0 };
+  (data.hourly_forecast||[]).forEach(h => {
+    if (counts[h.risk_label] !== undefined) counts[h.risk_label]++;
+  });
+  document.getElementById('risk-cards').innerHTML = `
+    <div class="box-red"><div class="flex items-center gap-2 mb-2"><div class="dot dot-red"></div><span style="color:#7f1d1d;">Bahaya</span></div><div class="text-3xl text-red">${counts.Bahaya}</div><div class="text-red">jam</div></div>
+    <div class="box-orange"><div class="flex items-center gap-2 mb-2"><div class="dot dot-orange"></div><span style="color:#7c2d12;">Waspada</span></div><div class="text-3xl text-orange">${counts.Waspada}</div><div class="text-orange">jam</div></div>
+    <div class="box-yellow"><div class="flex items-center gap-2 mb-2"><div class="dot dot-yellow"></div><span style="color:#713f12;">Siaga</span></div><div class="text-3xl text-yellow">${counts.Siaga}</div><div class="text-yellow">jam</div></div>
+    <div class="box-green"><div class="flex items-center gap-2 mb-2"><div class="dot dot-green"></div><span style="color:#14532d;">Aman</span></div><div class="text-3xl text-green">${counts.Aman}</div><div class="text-green">jam</div></div>`;
+}
+
+function renderRegression(data) {
+  if (!data || data.status !== 'ok') return;
+  const pred = data.prediction;
+  const cur  = data.current;
+  const rain = pred.rainfall_next_hour;
+
+  document.getElementById('pred-rain-val').textContent = rain.toFixed(2);
+  const label = rain > 50 ? 'Sangat Lebat' : rain > 20 ? 'Lebat' : rain > 5 ? 'Sedang' : 'Ringan';
+  const col   = rain > 50 ? '#dc2626' : rain > 20 ? '#ea580c' : rain > 5 ? '#ca8a04' : '#16a34a';
+  document.getElementById('pred-rain-val').style.color = col;
+  document.getElementById('pred-rain-label').textContent = label;
+  document.getElementById('pred-rain-label').style.color = col;
+
+  document.getElementById('cur-precip').textContent = cur.precipitation ?? '—';
+  document.getElementById('cur-temp').textContent   = cur.temperature ?? '—';
+  document.getElementById('cur-hum').textContent    = cur.humidity ?? '—';
+  document.getElementById('cur-cloud').textContent  = cur.cloud_cover ?? '—';
+}
+
+function renderClassification(data) {
+  if (!data || data.status !== 'ok') return;
+  const pred  = data.prediction;
+  const label = pred.flood_risk_label;
+  const proba = pred.flood_risk_proba;
+  const rl    = labelToRiskLevel(label);
+
+  const colors = { safe:'#22c55e', caution:'#eab308', warning:'#f97316', danger:'#ef4444' };
+  const badge  = document.getElementById('risk-badge-big');
+  badge.textContent = getRiskLabel(rl);
+  badge.style.background = colors[rl] || '#22c55e';
+
+  const descs = {
+    safe:'Kondisi aman. Risiko banjir sangat rendah berdasarkan model.',
+    caution:'Siaga. Curah hujan sedang, pantau perkembangan cuaca.',
+    warning:'Waspada. Potensi banjir meningkat. Bersiap untuk evakuasi.',
+    danger:'BAHAYA! Risiko banjir sangat tinggi. Segera evakuasi.'
+  };
+  document.getElementById('risk-desc').textContent = descs[rl] || '';
+  document.getElementById('danger-alert').style.display = rl === 'danger' ? 'block' : 'none';
+
+  // Probability bars
+  const barConf = [
+    { key:'Aman',    color:'#22c55e' },
+    { key:'Siaga',   color:'#eab308' },
+    { key:'Waspada', color:'#f97316' },
+    { key:'Bahaya',  color:'#ef4444' },
+  ];
+  const wrap = document.getElementById('proba-bars');
+  wrap.innerHTML = barConf.map(b => {
+    const pct = ((proba[b.key] || 0) * 100).toFixed(1);
+    return `<div class="proba-row">
+      <span class="proba-label">${b.key}</span>
+      <div class="proba-track"><div class="proba-fill" style="width:${pct}%;background:${b.color};"></div></div>
+      <span class="proba-val">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderChart(data) {
+  const ctx = document.getElementById('rainfallChart').getContext('2d');
+  if (rainfallChart) rainfallChart.destroy();
+
+  let labels = [], actualData = [], predData = [];
+
+  if (data && data.status === 'ok' && data.hourly_forecast) {
+    data.hourly_forecast.forEach(h => {
+      const t = new Date(h.time);
+      labels.push(`${t.getHours().toString().padStart(2,'0')}:00`);
+      actualData.push(h.rainfall_actual);
+      predData.push(h.rainfall_pred);
+    });
+  }
+
+  const gAct = ctx.createLinearGradient(0,0,0,300);
+  gAct.addColorStop(0,'rgba(59,130,246,.5)'); gAct.addColorStop(1,'rgba(59,130,246,0)');
+
+  rainfallChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        { label:'Aktual (mm)', data:actualData, borderColor:'#3b82f6', backgroundColor:gAct, fill:true, tension:.4, pointRadius:2 },
+        { label:'Prediksi RF (mm)', data:predData, borderColor:'#f97316', backgroundColor:'transparent', borderDash:[5,3], tension:.4, pointRadius:3, pointBackgroundColor:'#f97316' }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ labels:{ font:{size:11}, boxWidth:12 } },
+        tooltip:{ callbacks:{ label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(2)} mm` } }
+      },
+      scales:{
+        x:{ grid:{color:'#e5e7eb'}, ticks:{color:'#6b7280', maxTicksLimit:12} },
+        y:{ grid:{color:'#e5e7eb'}, ticks:{color:'#6b7280'}, title:{display:true,text:'mm/jam',color:'#6b7280'} }
+      }
+    }
+  });
+}
+
+function renderForecastTable(data) {
+  const tbody = document.getElementById('forecast-tbody');
+  if (!data || data.status !== 'ok' || !data.hourly_forecast) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted-foreground);padding:2rem;">Data tidak tersedia.</td></tr>`;
+    return;
+  }
+  const riskBg = { Aman:'#f0fdf4', Siaga:'#fefce8', Waspada:'#fff7ed', Bahaya:'#fef2f2' };
+  const riskColor = { Aman:'#16a34a', Siaga:'#ca8a04', Waspada:'#ea580c', Bahaya:'#dc2626' };
+
+  tbody.innerHTML = data.hourly_forecast.map(h => {
+    const t = new Date(h.time);
+    const tStr = `${t.toLocaleDateString('id-ID',{day:'2-digit',month:'short'})} ${t.getHours().toString().padStart(2,'0')}:00`;
+    return `<tr>
+      <td>${tStr}</td>
+      <td>${h.rainfall_actual.toFixed(2)} mm</td>
+      <td style="color:#f97316;font-weight:500;">${h.rainfall_pred.toFixed(2)} mm</td>
+      <td>${h.temperature} °C</td>
+      <td>${h.humidity} %</td>
+      <td><span style="padding:0.2rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:500;background:${riskBg[h.risk_label]||'#f3f3f5'};color:${riskColor[h.risk_label]||'#6b7280'};">${h.risk_label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderBadge(data) {
+  const el = document.getElementById('last-update-badge');
+  if (data && data.last_update) {
+    el.textContent = `🕐 Update: ${data.last_update}`;
+  }
+}
+
+function renderAll(data) {
+  buildStatusBanner(data);
+  renderRiskCards(data);
+  renderRegression(data);
+  renderClassification(data);
+  renderChart(data);
+  renderForecastTable(data);
+  renderBadge(data);
+  if (data && data.next_update) startCountdown(data.next_update);
+}
+
+// ===== MANUAL REFRESH =====
+async function doManualRefresh() {
+  const icon = document.getElementById('refresh-icon');
+  icon.classList.add('spinning');
+  await forceRefresh();
+  await new Promise(r => setTimeout(r, 3000));
+  const data = await fetchPrediction();
+  renderAll(data);
+  icon.classList.remove('spinning');
+}
+
+// ===== INIT =====
+(async () => {
+  const data = await fetchPrediction();
+  renderAll(data);
+  // schedule auto-refresh setiap 1 jam
+  scheduleAutoRefresh(renderAll);
+})();
+</script>
+</body>
+</html>
